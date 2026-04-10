@@ -16,7 +16,7 @@ const businessLinks = [
 	{ to: '/business/jobs', label: 'My Jobs' },
 	{ to: '/business/profile', label: 'Profile' },
 ];
-
+ 
 const adminLinks = [
 	{ to: '/admin/users', label: 'Users' },
 	{ to: '/admin/businesses', label: 'Businesses' },
