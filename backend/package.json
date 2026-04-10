@@ -9,10 +9,12 @@
 		"clean": "rm -rf prisma/dev.db* node_modules package-lock.json prisma/migrations/",
 		"reset": "npx prisma migrate reset && npx prisma migrate dev --name init && npx prisma generate && npm run seed && node src/server.js 3000"
 	},
+	
 	"author": "CSC309 Student, Winter 2026",
 	"license": "ISC",
 	"dependencies": {
 		"@prisma/client": "^6.19.3",
+		"serve": "^14.2.4",
 		"bcrypt": "^5.1.1",
 		"cors": "^2.8.5",
 		"dotenv": "^16.4.7",
