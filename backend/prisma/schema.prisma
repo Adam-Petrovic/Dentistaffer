@@ -1,0 +1,185 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Account {
+  id Int @id @default(autoincrement()) // will match in coreponding user/buiness/admin table
+  email String @unique
+  password String
+  role String
+  activated Boolean @default(false)
+  createdAt DateTime @default(now())
+
+  avatar String?
+  biography String?
+
+  phone_number String?
+  postal_address String?
+
+  resetToken String? @unique
+  resetExpiryDate DateTime?
+  resetUsed Boolean @default(false)
+
+  regularAccount RegularAccount?
+  buissnessAccount BusinessAccount?
+  adminAccount AdminAccount?
+
+}
+
+model RegularAccount {
+  id Int @id // same as in Account table
+  account Account @relation(fields: [id], references: [id], onDelete: Cascade)
+
+  first_name String
+  last_name String
+  // email in Account
+  // activated in Account
+  // role in Account
+  // phone in Account
+  // postal in account
+  birthday String @default("1970-01-01") // Y M D
+  suspended Boolean @default(false)
+  available Boolean @default(false)
+  lastActive DateTime?
+  // creted in Account
+  // reset in Acconut
+  // expires in Account
+  // avatar in Account
+  // biography in Account
+  resume String?
+  workedJobs  Job[]    @relation("JobWorker")
+
+  qualifications Qualification[]
+  interests Interest[]
+  negotiation    Negotiation[] @relation("CandidateInNegotiation") 
+}
+
+model BusinessAccount {
+  id Int @id // same as in Acconuts
+  account Account @relation(fields: [id], references: [id], onDelete: Cascade)
+
+  business_name String
+  // email in Account
+  // role in Account
+  // phone in Account
+  // postal in Acconut
+  owner_name String
+  // email in account
+  // password in Account
+  // role made in account
+  locationLong Float // mayb ?
+  locationLat Float // maybe ?
+  verified Boolean @default(false)
+  // activated in Account
+
+  negotiation Negotiation[] @relation("BusinessInNegotiation")
+  jobs Job[]
+
+}
+
+model AdminAccount {
+  id Int @id
+  account Account @relation(fields: [id], references: [id], onDelete: Cascade)
+}
+
+model PositionType {
+  id Int @id @default(autoincrement())
+  name String @unique
+  description String
+  hidden Boolean @default(true)
+
+  qualifications Qualification[]
+  jobs Job[]
+}
+
+model Qualification {
+  id Int @id @default(autoincrement())
+  status String @default("created")
+  note String @default("")
+  document String? 
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user_id Int
+  user RegularAccount @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  position_type_id Int
+  position_type PositionType @relation(fields: [position_type_id], references: [id], onDelete: Cascade)
+
+}
+
+model Job {
+  id Int @id @default(autoincrement())
+  status String @default("open")
+
+  salary_min Float
+  salary_max Float
+  start_time DateTime
+  end_time DateTime
+  note String @default("")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  business_id Int
+  business BusinessAccount  @relation(fields: [business_id], references: [id], onDelete: Cascade)
+
+  position_type PositionType @relation(fields: [position_type_id], references: [id])
+  position_type_id Int
+
+  worker_id Int?            
+  worker RegularAccount? @relation("JobWorker", fields: [worker_id], references: [id])
+
+  interests Interest[]
+  negotiation Negotiation? @relation("JobInNegotiation")
+}
+
+model Interest {
+  id Int @id @default(autoincrement())
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId Int
+
+  candidate RegularAccount @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  candidateId Int
+
+  candidateInterested Boolean?
+  businessInterested Boolean?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([jobId, candidateId])
+
+  negotiation         Negotiation?   @relation("InterestInNegotiation")
+}
+
+model Negotiation {
+  id Int @id @default(autoincrement())
+  status String @default("active")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  expiresAt DateTime
+
+  interest Interest @relation("InterestInNegotiation", fields: [interestId], references: [id], onDelete: Cascade)
+  interestId Int @unique 
+
+  job Job @relation("JobInNegotiation", fields: [jobId], references: [id]) 
+  jobId Int @unique
+
+  candidate RegularAccount @relation("CandidateInNegotiation", fields: [candidateId], references: [id])
+  candidateId Int 
+
+  business BusinessAccount @relation("BusinessInNegotiation", fields: [business_id], references: [id])
+  business_id Int
+
+  candidateDecision String?
+  businessDecision  String?
+}
