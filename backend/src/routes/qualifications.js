@@ -396,13 +396,13 @@ router.put(
 
 			const documentDir = `/uploads/users/${req.user.id}/${qualificationId}`;
 
-			fs.mkdirSync(`.{documentDir}`, { recursive: true });
+			fs.mkdirSync(`.${documentDir}`, { recursive: true });
 			fs.writeFileSync(`.${documentDir}/document.pdf`, req.file.buffer);
 
 			const finalDoc = await prisma.qualification.update({
 				where: { id: qualificationId },
 				data: {
-					document: `${documentDir}/document.pdf`,
+					document: `/${documentDir}/document.pdf`,
 				},
 			});
 

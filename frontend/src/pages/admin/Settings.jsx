@@ -1,3 +1,5 @@
+/* AI FOR FILE (claude) */
+
 import { useState } from 'react';
 import AppLayout from '../../components/AppLayout';
 import { useAuth } from '../../context/AuthContext';

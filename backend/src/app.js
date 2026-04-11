@@ -27,33 +27,6 @@ function create_app() {
 	app.use('/auth', authRouter);
 
 	app.use(authenticate);
-
-	// ai loll gemini
-	// app.use(async (req, res, next) => {
-	// 	if (req.user && req.user.role === 'regular') {
-	// 		try {
-	// 			await prisma.account.update({
-	// 				where: { id: req.user.id },
-	// 				data: { updatedAt: new Date() },
-	// 			});
-	// 		} catch (err) {
-	// 			console.error('Activity update failed:', err);
-	// 		}
-	// 	}
-	// 	if (req.user && req.user.role === 'business') {
-	// 		try {
-	// 			await prisma.account.update({
-	// 				where: { id: req.user.id },
-	// 				data: { updatedAt: new Date() },
-	// 			});
-	// 		} catch (err) {
-	// 			console.error('Activity update failed:', err);
-	// 		}
-	// 	}
-
-	// 	next();
-	// });
-
 	app.use('/users', userRouter);
 	app.use('/businesses', businessesRouter);
 	app.use('/jobs', jobsRouter);

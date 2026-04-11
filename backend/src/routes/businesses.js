@@ -517,23 +517,18 @@ router.put('/me/avatar', requireRole('business'), async (req, res) => {
 			return res.status(400).json({ error: 'Missing file' });
 		}
 
-		const avatarDir = `/uploads/businesses/${req.user.id}`;
+		const avatarDir = `uploads/business/${req.user.id}`;
+		const avatarPath = `${avatarDir}/avatar${path.extname(req.file.originalname)}`;
 
-		fs.mkdirSync(`.{avatarDir}`, { recursive: true });
-		fs.writeFileSync(
-			`.${avatarDir}/avatar${path.extname(req.file.originalname)}`,
-			req.file.buffer,
-		);
+		fs.mkdirSync(avatarDir, { recursive: true });
+		fs.writeFileSync(avatarPath, req.file.buffer);
 
 		await prisma.account.update({
 			where: { id: req.user.id },
-			data: {
-				avatar: `${avatarDir}/avatar${path.extname(req.file.originalname)}`,
-			},
+			data: { avatar: `/${avatarPath}` },
 		});
 
-		let avatarFull = `${avatarDir}/avatar${path.extname(req.file.originalname)}`;
-		return res.status(200).json({ avatar: avatarFull });
+		return res.status(200).json({ avatar: `/${avatarPath}` });
 	});
 });
 

@@ -1,5 +1,7 @@
 'use strict';
 
+
+// AI entire file. claude. 
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = 'BigManFrankie357';

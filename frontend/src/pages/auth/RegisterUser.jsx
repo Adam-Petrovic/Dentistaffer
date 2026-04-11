@@ -1,3 +1,5 @@
+/* AI FOR FILE (claude) */
+
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AuthLayout from '../../components/AuthLayout';
@@ -68,7 +70,7 @@ export default function RegisterUser() {
 						)
 					}
 				>
-					Activate regUser
+					Activate Account
 				</button>
 				<div
 					className='auth-switch'

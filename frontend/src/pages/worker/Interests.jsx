@@ -1,3 +1,4 @@
+/* AI FOR FILE (claude) */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout';
@@ -24,6 +25,7 @@ export default function Interests() {
 				page,
 				limit: LIMIT,
 			});
+			console.log(data.results);
 			setInterests(data.results);
 			setTotal(data.count);
 		} catch {}

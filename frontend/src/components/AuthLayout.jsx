@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+/* AI FOR FILE (claude) */
 
 function AuthLayout({ title, subtitle, children }) {
 	return (

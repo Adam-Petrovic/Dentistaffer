@@ -1,3 +1,5 @@
+/* AI FOR FILE (claude) */
+
 export default function Pagination({ page, total, limit, onPage }) {
 	const totalPages = Math.ceil(total / limit) || 1;
 	if (totalPages <= 1) return null;

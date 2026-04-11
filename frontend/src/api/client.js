@@ -1,4 +1,5 @@
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+// AI for entire file
 
 async function request(method, path, body, token) {
 	const headers = { 'Content-Type': 'application/json' };

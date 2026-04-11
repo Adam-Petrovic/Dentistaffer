@@ -1,3 +1,4 @@
+/* AI FOR FILE (claude) */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout';

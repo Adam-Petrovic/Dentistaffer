@@ -139,8 +139,8 @@ router.post('/', async (req, res) => {
 		return res.status(400).json({ error: 'Invalid password' });
 	}
 
-	if (phone_number !== undefined && !isValidPhoneNumber(phone_number)) {
-		return res.status(400).json({ error: 'Invalid phone' });
+	if (phone_number && !isValidPhoneNumber(phone_number)) {
+		return res.status(400).json({ error: 'Invalid phone number' });
 	}
 
 	if (birthday !== undefined && !isValidBirthday(birthday)) {
@@ -521,25 +521,18 @@ router.put('/me/avatar', requireRole('regular'), async (req, res) => {
 			return res.status(400).json({ error: 'Missing file' });
 		}
 
-		const avatarDir = `/uploads/users/${req.user.id}`;
+		const avatarDir = `uploads/users/${req.user.id}`;
+		const avatarPath = `${avatarDir}/avatar${path.extname(req.file.originalname)}`;
 
-		fs.mkdirSync(`.{avatarDir}`, { recursive: true });
-
-		fs.writeFileSync(
-			`.${avatarDir}/avatar${path.extname(req.file.originalname)}`,
-			req.file.buffer,
-		);
+		fs.mkdirSync(avatarDir, { recursive: true });
+		fs.writeFileSync(avatarPath, req.file.buffer);
 
 		await prisma.account.update({
 			where: { id: req.user.id },
-			data: {
-				avatar: `${avatarDir}/avatar${path.extname(req.file.originalname)}`,
-			},
+			data: { avatar: `/${avatarPath}` },
 		});
 
-		let avatarPath = `${avatarDir}/avatar${path.extname(req.file.originalname)}`;
-
-		return res.status(200).json({ avatar: avatarPath });
+		return res.status(200).json({ avatar: `/${avatarPath}` });
 	});
 });
 // ----
@@ -556,7 +549,7 @@ router.put('/me/resume', requireRole('regular'), async (req, res) => {
 
 		const resumeDir = `/uploads/users/${req.user.id}`;
 
-		fs.mkdirSync(`.{resumeDir}`, { recursive: true });
+		fs.mkdirSync(`.${resumeDir}`, { recursive: true });
 		fs.writeFileSync(`.${resumeDir}/resume.pdf`, req.file.buffer);
 
 		await prisma.regularAccount.update({

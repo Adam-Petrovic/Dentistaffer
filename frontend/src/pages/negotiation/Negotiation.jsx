@@ -1,3 +1,4 @@
+/* AI FOR FILE (claude) */
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
@@ -39,16 +40,22 @@ export default function Negotiation() {
 	const pollRef = useRef(null);
 
 	const load = async () => {
-		try {
+		console.log('token:', token);
+		console.log('role:', role);
+		
 			const data = await api.get('/negotiations/me', token);
+
 			setNegotiation(data);
+			console.log(data);
 			negRef.current = data;
-		} catch (err) {
-			if (err.status === 404) {
-				setNegotiation(null);
-				negRef.current = null;
-			}
-		}
+		// } catch (err) {
+		// 	console.log(err);
+		// 	console.log('hello');
+		// 	if (err.status === 404) {
+		// 		setNegotiation(null);
+		// 		negRef.current = null;
+		// 	}
+		// }
 		setLoading(false);
 	};
 

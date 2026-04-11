@@ -1,3 +1,5 @@
+/* AI FOR FILE (claude) */
+
 import { useEffect, useState } from 'react';
 import AppLayout from '../../components/AppLayout';
 import Pagination from '../../components/Pagination';

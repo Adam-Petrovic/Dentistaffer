@@ -1,3 +1,5 @@
+/* AI FOR FILE (claude) */
+
 import { useState } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import AuthLayout from '../../components/AuthLayout';

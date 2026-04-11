@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './AppLayout.css';
+/* AI FOR FILE (claude) */
 
 const workerLinks = [
 	{ to: '/dashboard', label: 'Dashboard' },
@@ -16,7 +17,7 @@ const businessLinks = [
 	{ to: '/business/jobs', label: 'My Jobs' },
 	{ to: '/business/profile', label: 'Profile' },
 ];
- 
+
 const adminLinks = [
 	{ to: '/admin/users', label: 'Users' },
 	{ to: '/admin/businesses', label: 'Businesses' },

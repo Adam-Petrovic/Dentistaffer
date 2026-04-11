@@ -1,3 +1,5 @@
+/* AI FOR FILE (claude) */
+
 import { createContext, useContext, useState, useEffect } from 'react';
 import { api } from '../api/auth';
 

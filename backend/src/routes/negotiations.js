@@ -31,11 +31,11 @@ const docUploader = multer({
 		cb(null, true);
 	},
 });
-
+// ai help with debuggins
 router.post('/', requireRole('regular', 'business'), async (req, res) => {
 	let interest_id = parseInt(req.body.interest_id);
 	if (isNaN(interest_id)) {
-		return res.status().json({ error: 'not found' });
+		return res.status(400).json({ error: 'invalid interest_id' });
 	}
 	const now = new Date();
 
@@ -56,102 +56,32 @@ router.post('/', requireRole('regular', 'business'), async (req, res) => {
 	});
 
 	if (!interest) {
-		return res.status(404).json({ error: 'not ofund' });
+		return res.status(404).json({ error: 'interest not found' });
 	}
 
-	const job = interest.job;
-
-	if (interest.job.status !== 'open') {
-		return res.status(409).json({ error: 'unaalibelne job' });
-	}
-
-	const existing = await prisma.negotiation.findUnique({
-		where: { jobId: job.id },
-		include: {
-			job: {
-				include: {
-					position_type: true,
-					business: true,
-				},
-			},
-			candidate: true,
-		},
-	});
-
-	if (existing) {
-		return res.status(200).json({
-			id: existing.id,
-			status: existing.status,
-			createdAt: existing.createdAt,
-			updatedAt: existing.updatedAt,
-			expiresAt: existing.expiresAt,
-			job: {
-				id: existing.job.id,
-				status: existing.job.status,
-				position_type: {
-					id: existing.job.position_type_id,
-					name: existing.job.position_type.name,
-				},
-				business: {
-					id: existing.job.business.id,
-					business_name: existing.job.business.business_name,
-				},
-				salary_min: existing.job.salary_min,
-				salary_max: existing.job.salary_max,
-				start_time: existing.job.start_time,
-				end_time: existing.job.end_time,
-			},
-			user: {
-				id: existing.candidate.id,
-				first_name: existing.candidate.first_name,
-				last_name: existing.candidate.last_name,
-			},
-			decisions: {
-				candidate: existing.candidateDecision ?? null,
-				business: existing.candidateDecision ?? null,
-			},
-		});
-	}
-
+	// ownership check — must be a party to this interest
 	if (
-		!(req.user.id === interest.candidateId) &&
-		!(req.user.id === interest.job.business_id)
+		req.user.id !== interest.candidateId &&
+		req.user.id !== interest.job.business_id
 	) {
-		return res.status(404).json({ error: 'Interest not found' });
+		return res.status(404).json({ error: 'interest not found' });
 	}
 
-	const discoverable = await isDiscoverable(
-		interest.candidate,
-		interest.job,
-		now,
-	);
-	if (!discoverable) {
-		return res.status(404).json({ error: 'forbidden' });
-	}
-
-	if (!interest.businessInterested || !interest.candidateInterested) {
-		return res.status(403).json({ error: 'forbidden' });
-	}
-
-	const timeBeforeStart =
-		(interest.job.start_time.getTime() - now.getTime()) / 1000;
-	if (timeBeforeStart < system_timers.negotiationWindow) {
-		return res.status(409).json({ error: 'negotiantion window past' });
-	}
-
+	// if active negotiation already exists for this interest, return it
 	if (interest.negotiation && interest.negotiation.status === 'active') {
-		if (now < interest.negotiation.expiresAt) {
+		if (now < new Date(interest.negotiation.expiresAt)) {
+			const neg = interest.negotiation;
 			return res.status(200).json({
-				id: interest.negotiation.id,
-				status: interest.negotiation.status,
-				createdAt: interest.negotiation.createdAt,
-				updatedAt: interest.negotiation.updatedAt,
-				expiresAt: interest.negotiation.expiresAt,
+				id: neg.id,
+				status: neg.status,
+				createdAt: neg.createdAt,
+				updatedAt: neg.updatedAt,
+				expiresAt: neg.expiresAt,
 				job: {
 					id: interest.job.id,
 					status: interest.job.status,
 					position_type: {
-						id: interest.job.position_type_id,
+						id: interest.job.position_type.id,
 						name: interest.job.position_type.name,
 					},
 					business: {
@@ -169,32 +99,99 @@ router.post('/', requireRole('regular', 'business'), async (req, res) => {
 					last_name: interest.candidate.last_name,
 				},
 				decisions: {
-					candidate: interest.negotiation.candidateDecision ?? null,
-					business: interest.negotiation.candidateDecision ?? null,
+					candidate: neg.candidateDecision ?? null,
+					business: neg.businessDecision ?? null,
 				},
 			});
 		}
 	}
 
-	if (interest.negotiation) {
-		const userNeg = await prisma.negotiation.findFirst({
-			where: { userId: interest.negotiation.candidateId },
-			include: { negotiation: true },
-		});
+	// check if job is open
+	if (interest.job.status !== 'open') {
+		return res.status(409).json({ error: 'job is not open' });
+	}
 
+	// check mutual interest
+	if (!interest.businessInterested || !interest.candidateInterested) {
+		return res.status(403).json({ error: 'interest is not mutual' });
+	}
+
+	// check discoverability
+	const discoverable = await isDiscoverable(
+		interest.candidate,
+		interest.job,
+		now,
+	);
+	if (!discoverable) {
+		return res.status(403).json({ error: 'candidate is not discoverable' });
+	}
+
+	// check negotiation window
+	const timeBeforeStart =
+		(interest.job.start_time.getTime() - now.getTime()) / 1000;
+	if (timeBeforeStart < system_timers.negotiationWindow) {
+		return res
+			.status(409)
+			.json({ error: 'not enough time before job start' });
+	}
+
+	// check if either party is already in a different active negotiation
+	const candidateNeg = await prisma.negotiation.findFirst({
+		where: {
+			candidateId: interest.candidateId,
+			status: 'active',
+			expiresAt: { gt: now },
+		},
+	});
+
+	if (candidateNeg && candidateNeg.interestId !== interest_id) {
 		const waitTime = Math.ceil(
-			(userNeg.expiresAt.getTime() - now.getTime()) / 1000,
+			(candidateNeg.expiresAt.getTime() - now.getTime()) / 1000,
 		);
+		return res
+			.status(409)
+			.json({ error: 'candidate in active negotiation', waitTime });
+	}
 
-		return res.status(409).json({
-			error: 'Active negotiation',
-			waitTime,
-		});
+	const businessNeg = await prisma.negotiation.findFirst({
+		where: {
+			business_id: interest.job.business_id,
+			status: 'active',
+			expiresAt: { gt: now },
+		},
+	});
+
+	if (businessNeg && businessNeg.interestId !== interest_id) {
+		const waitTime = Math.ceil(
+			(businessNeg.expiresAt.getTime() - now.getTime()) / 1000,
+		);
+		return res
+			.status(409)
+			.json({ error: 'business in active negotiation', waitTime });
+	}
+
+	// check if job already has a different active negotiation
+	const jobNeg = await prisma.negotiation.findFirst({
+		where: {
+			jobId: interest.job.id,
+			status: 'active',
+			expiresAt: { gt: now },
+		},
+	});
+
+	if (jobNeg && jobNeg.interestId !== interest_id) {
+		const waitTime = Math.ceil(
+			(jobNeg.expiresAt.getTime() - now.getTime()) / 1000,
+		);
+		return res
+			.status(409)
+			.json({ error: 'job in active negotiation', waitTime });
 	}
 
 	const expiresAt = new Date(
 		now.getTime() + system_timers.negotiationWindow * 1000,
 	);
+
 	const negotiation = await prisma.negotiation.create({
 		data: {
 			interestId: interest_id,
@@ -205,7 +202,7 @@ router.post('/', requireRole('regular', 'business'), async (req, res) => {
 		},
 	});
 
-	// socket stuff
+	// socket notifications
 	const io = getComms();
 	if (io) {
 		io.to(`account:${interest.job.business_id}`).emit(
@@ -214,11 +211,9 @@ router.post('/', requireRole('regular', 'business'), async (req, res) => {
 				negotiation_id: negotiation.id,
 			},
 		);
-
 		io.to(`account:${interest.candidateId}`).emit('negotiation:started', {
 			negotiation_id: negotiation.id,
 		});
-
 		const allSockets = await io.fetchSockets();
 		allSockets.forEach((socket) => {
 			if (
@@ -263,9 +258,8 @@ router.post('/', requireRole('regular', 'business'), async (req, res) => {
 		},
 	});
 });
-
 // -----
-
+// ai help fo rdebgin
 router.get('/me', requireRole('regular', 'business'), async (req, res) => {
 	let uAccount;
 	if (req.user.role === 'regular') {
@@ -352,13 +346,14 @@ router.get('/me', requireRole('regular', 'business'), async (req, res) => {
 		},
 	});
 });
-
+// Ai help with debuggins
 router.patch(
 	'/me/decision',
 	requireRole('regular', 'business'),
 	async (req, res) => {
 		const now = new Date();
-		const { decision, negotiation_id } = req.body;
+		const { decision } = req.body;
+		let { negotiation_id } = req.body;
 
 		if (!decision || !['accept', 'decline'].includes(decision)) {
 			return res
@@ -366,13 +361,16 @@ router.patch(
 				.json({ error: 'decision must be accept or decline' });
 		}
 
-		if (
-			negotiation_id === undefined ||
-			typeof negotiation_id !== 'number'
-		) {
-			return res.status(400).json({
-				error: 'negotiation_id is required and must be a number',
-			});
+		if (negotiation_id === undefined || negotiation_id === null) {
+			return res
+				.status(400)
+				.json({ error: 'negotiation_id is required' });
+		}
+		negotiation_id = parseInt(negotiation_id);
+		if (isNaN(negotiation_id)) {
+			return res
+				.status(400)
+				.json({ error: 'negotiation_id must be a number' });
 		}
 
 		const isRegular = req.user.role === 'regular';
@@ -383,7 +381,7 @@ router.patch(
 				expiresAt: { gt: now },
 				...(isRegular
 					? { candidateId: req.user.id }
-					: { job: { business_id: req.user.id } }),
+					: { business_id: req.user.id }),
 			},
 			include: {
 				interest: {
@@ -402,14 +400,12 @@ router.patch(
 		}
 
 		if (negotiation.id !== negotiation_id) {
-			return res.status(404).json({
+			return res.status(409).json({
 				error: 'negotiation_id does not match your active negotiation',
 			});
 		}
 
-		const updateData = {
-			updatedAt: now,
-		};
+		const updateData = { updatedAt: now };
 
 		if (isRegular) {
 			updateData.candidateDecision = decision;
@@ -419,17 +415,21 @@ router.patch(
 
 		if (decision === 'decline') {
 			updateData.status = 'failed';
-		}
+		} else {
+			// check if both accepted
+			const candidateDecision = isRegular
+				? decision
+				: negotiation.candidateDecision;
+			const businessDecision = isRegular
+				? negotiation.businessDecision
+				: decision;
 
-		const candidateDecision = isRegular
-			? decision
-			: negotiation.candidateDecision;
-		const businessDecision = isRegular
-			? negotiation.businessDecision
-			: decision;
-
-		if (candidateDecision === 'accept' && businessDecision === 'accept') {
-			updateData.status = 'success';
+			if (
+				candidateDecision === 'accept' &&
+				businessDecision === 'accept'
+			) {
+				updateData.status = 'success';
+			}
 		}
 
 		const updated = await prisma.negotiation.update({
@@ -447,7 +447,8 @@ router.patch(
 			});
 		}
 
-		if (updated.status === 'success' || updated.status === 'failed') {
+		if (updated.status === 'failed') {
+			// reset inactivity timer and make available again
 			await prisma.regularAccount.update({
 				where: { id: negotiation.candidateId },
 				data: {
@@ -455,13 +456,21 @@ router.patch(
 					available: true,
 				},
 			});
-
+			// reset interests
 			await prisma.interest.update({
 				where: { id: negotiation.interestId },
 				data: {
 					candidateInterested: null,
 					businessInterested: null,
 				},
+			});
+		}
+
+		if (updated.status === 'success') {
+			// also reset inactivity timer on success per spec
+			await prisma.regularAccount.update({
+				where: { id: negotiation.candidateId },
+				data: { lastActive: now },
 			});
 		}
 
